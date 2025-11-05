@@ -30,17 +30,25 @@ import type {
 
 const app = express();
 
-const defaultCorsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const envOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : [];
 
-const allowedOrigins = defaultCorsOrigins
-  .map((origin) => origin.trim())
-  .filter((origin) => origin.length > 0);
+const devOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+const allowedOriginSet = new Set<string>([...envOrigins, ...devOrigins]);
+const allowedOrigins = Array.from(allowedOriginSet.values());
+const allowAllOrigins = allowedOrigins.length === 0;
+
+const isOriginAllowed = (origin?: string | null): boolean => {
+  if (!origin) return true; // treat same-origin / no-origin (curl, mobile apps) as allowed
+  if (allowAllOrigins) return true;
+  return allowedOriginSet.has(origin);
+};
 
 const corsOptions: CorsOptions = {
   origin(origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
       return;
     }
@@ -50,21 +58,29 @@ const corsOptions: CorsOptions = {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Disposition'],
+  maxAge: 86400,
 };
 
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const origin = req.headers.origin ?? '';
-  const allowOrigin =
-    origin && allowedOrigins.includes(origin)
-      ? origin
-      : allowedOrigins[0] || origin || '*';
+  const origin = req.headers.origin;
+  const originIsAllowed = isOriginAllowed(origin);
 
-  res.header('Access-Control-Allow-Origin', allowOrigin);
-  if (allowOrigin !== '*') {
-    res.header('Access-Control-Allow-Credentials', 'true');
+  if (originIsAllowed) {
+    res.header('Access-Control-Allow-Origin', origin ?? '*');
+    if (origin) {
+      res.header('Access-Control-Allow-Credentials', 'true');
+    } else {
+      res.removeHeader('Access-Control-Allow-Credentials');
+    }
+  } else if (allowedOrigins.length > 0) {
+    // Not allowed, but still emit a deterministic origin so debugging is easier.
+    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+    res.removeHeader('Access-Control-Allow-Credentials');
   } else {
+    res.header('Access-Control-Allow-Origin', '*');
     res.removeHeader('Access-Control-Allow-Credentials');
   }
+
   res.header('Vary', 'Origin');
   res.header(
     'Access-Control-Allow-Headers',
@@ -75,11 +91,21 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
     'GET, POST, PUT, PATCH, DELETE, OPTIONS'
   );
   res.header('Access-Control-Expose-Headers', 'Content-Disposition');
-  res.header('Access-Control-Max-Age', '86400');
+
   if (req.method === 'OPTIONS') {
+    if (!originIsAllowed) {
+      res.status(403).json({ error: `CORS origin not allowed: ${origin}` });
+      return;
+    }
     res.sendStatus(204);
     return;
   }
+
+  if (!originIsAllowed) {
+    res.status(403).json({ error: `CORS origin not allowed: ${origin}` });
+    return;
+  }
+
   next();
 });
 
