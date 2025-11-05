@@ -372,12 +372,12 @@ app.post('/api/ensure-territory', ensureReady, async (req, res) => {
     }
     console.log('[ensure-territory] request from', origin, 'at', new Date().toISOString());
 
-    await ensureTerritory();
-    await ensureGatewayAuth();
+    // await ensureTerritory();
+    // await ensureGatewayAuth();
     res.json({ ok: true });
   } catch (e: any) {
     console.error('[ensure-territory] error:', e);
-    res.status(500).json({ ok: false, error: e.message || String(e) });
+    res.status(404).json({ ok: false, error: e.message || String(e) });
   }
 });
 
