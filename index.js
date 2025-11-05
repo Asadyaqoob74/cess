@@ -88,6 +88,11 @@ app.options('/api/ensure-territory', cors(corsOptions));
 app.options('/api/upload', cors(corsOptions));
 app.options('/api/file/:fid', cors(corsOptions));
 app.options('/api/download/:fid', cors(corsOptions));
+app.options('*', cors(corsOptions));
+app.options('/api/ensure-territory', cors(corsOptions));
+app.options('/api/upload', cors(corsOptions));
+app.options('/api/file/:fid', cors(corsOptions));
+app.options('/api/download/:fid', cors(corsOptions));
 // Ensure errors also include CORS headers
 app.use((err, _req, res, next) => {
     if (!res.headersSent) {
