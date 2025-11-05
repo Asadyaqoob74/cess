@@ -40,7 +40,7 @@ const allowedOrigins = defaultCorsOrigins
 
 const corsOptions: CorsOptions = {
   origin(origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
@@ -48,26 +48,34 @@ const corsOptions: CorsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Disposition'],
 };
 
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const origin = req.headers.origin ?? '';
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
+  const allowOrigin =
+    origin && allowedOrigins.includes(origin)
+      ? origin
+      : allowedOrigins[0] || origin || '*';
+
+  res.header('Access-Control-Allow-Origin', allowOrigin);
+  if (allowOrigin !== '*') {
     res.header('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.removeHeader('Access-Control-Allow-Credentials');
   }
   res.header('Vary', 'Origin');
   res.header(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Requested-With, Accept'
+    'Content-Type, Authorization, X-Requested-With, Accept, Origin'
   );
   res.header(
     'Access-Control-Allow-Methods',
     'GET, POST, PUT, PATCH, DELETE, OPTIONS'
   );
   res.header('Access-Control-Expose-Headers', 'Content-Disposition');
+  res.header('Access-Control-Max-Age', '86400');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
