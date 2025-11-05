@@ -66,31 +66,31 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   const originIsAllowed = isOriginAllowed(origin);
 
   if (originIsAllowed) {
-    res.header('Access-Control-Allow-Origin', origin ?? '*');
+    res.setHeader('Access-Control-Allow-Origin', origin ?? '*');
     if (origin) {
-      res.header('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
     } else {
       res.removeHeader('Access-Control-Allow-Credentials');
     }
   } else if (allowedOrigins.length > 0) {
     // Not allowed, but still emit a deterministic origin so debugging is easier.
-    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
     res.removeHeader('Access-Control-Allow-Credentials');
   } else {
-    res.header('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.removeHeader('Access-Control-Allow-Credentials');
   }
 
-  res.header('Vary', 'Origin');
-  res.header(
+  res.setHeader('Vary', 'Origin');
+  res.setHeader(
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization, X-Requested-With, Accept, Origin'
   );
-  res.header(
+  res.setHeader(
     'Access-Control-Allow-Methods',
     'GET, POST, PUT, PATCH, DELETE, OPTIONS'
   );
-  res.header('Access-Control-Expose-Headers', 'Content-Disposition');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 
   if (req.method === 'OPTIONS') {
     if (!originIsAllowed) {
@@ -111,6 +111,27 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Ensure errors also include CORS headers
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!res.headersSent) {
+    const origin = res.getHeader('Access-Control-Allow-Origin');
+    if (!origin) {
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] || '*');
+    }
+    if (!res.getHeader('Access-Control-Allow-Headers')) {
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, X-Requested-With, Accept, Origin'
+      );
+    }
+    if (!res.getHeader('Access-Control-Allow-Methods')) {
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    }
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+  }
+  next(err);
+});
 
 const upload = multer({ dest: 'uploads/' });
 
