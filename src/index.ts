@@ -39,7 +39,7 @@ const allowedOrigins = defaultCorsOrigins
   .filter((origin) => origin.length > 0);
 
 const corsOptions: CorsOptions = {
-  origin(origin, callback) {
+  origin(origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
@@ -52,7 +52,7 @@ const corsOptions: CorsOptions = {
   exposedHeaders: ['Content-Disposition'],
 };
 
-app.use((req, res, next) => {
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const origin = req.headers.origin ?? '';
   if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);

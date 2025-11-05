@@ -14,7 +14,42 @@ import { stringToU8a } from '@polkadot/util';
 import bs58 from 'bs58';
 import crypto from 'crypto';
 const app = express();
-app.use(cors());
+const defaultCorsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const allowedOrigins = defaultCorsOrigins
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+        callback(new Error(`CORS origin not allowed: ${origin}`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Disposition'],
+};
+app.use((req, res, next) => {
+    const origin = req.headers.origin ?? '';
+    if (origin && allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
+    res.header('Vary', 'Origin');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Expose-Headers', 'Content-Disposition');
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(204);
+        return;
+    }
+    next();
+});
+app.use(cors(corsOptions));
 app.use(express.json());
 const upload = multer({ dest: 'uploads/' });
 const GATEWAY_URL = process.env.GATEWAY_URL;
