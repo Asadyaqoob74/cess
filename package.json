@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node src/index.js",
-    "start": "node src/index.js"
+    "dev": "node index.js",
+    "start": "node index.js"
   },
   "dependencies": {
     "@cessnetwork/api": "latest",
