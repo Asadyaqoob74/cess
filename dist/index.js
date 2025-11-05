@@ -292,14 +292,20 @@ app.get('/api/debug/gateways', ensureReady, async (_req, res) => {
 });
 // ==================== MAIN API ENDPOINTS ====================
 // API: Ensure territory + authorization
-app.post('/api/ensure-territory', ensureReady, async (_req, res) => {
+app.post('/api/ensure-territory', ensureReady, async (req, res) => {
     try {
+        const origin = req.headers.origin ?? allowedOrigins[0] ?? '*';
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        if (origin !== '*') {
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
+        console.log('[ensure-territory] request from', origin, 'at', new Date().toISOString());
         await ensureTerritory();
         await ensureGatewayAuth();
         res.json({ ok: true });
     }
     catch (e) {
-        console.error(e);
+        console.error('[ensure-territory] error:', e);
         res.status(500).json({ ok: false, error: e.message || String(e) });
     }
 });
