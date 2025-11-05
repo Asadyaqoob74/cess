@@ -3,9 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "build": "tsc -p .",
-    "start": "node dist/index.js"
+    "dev": "node src/index.js",
+    "start": "node src/index.js"
   },
   "dependencies": {
     "@cessnetwork/api": "latest",
