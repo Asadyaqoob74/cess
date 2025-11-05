@@ -1,0 +1,23 @@
+{
+  "project": "CESS Demo Upload",
+  "description": "This is a demo JSON file used for testing file upload, download, update, and delete operations via the CESS decentralized storage gateway (Silicon Valley).",
+  "createdBy": "Anon ID",
+  "timestamp": "2025-11-04T14:00:00Z",
+  "data": {
+    "user": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Developer"
+    },
+    "metrics": {
+      "files_uploaded": 5,
+      "files_deleted": 1,
+      "status": "active"
+    },
+    "notes": [
+      "This file demonstrates the CRUD process.",
+      "After uploading, check the file ID (FID) returned.",
+      "Use that FID to test status, download, update, and delete endpoints."
+    ]
+  }
+}

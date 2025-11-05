@@ -1,0 +1,33 @@
+{
+  "name": "cess-demo-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p .",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@cessnetwork/api": "latest",
+    "@cessnetwork/types": "latest",
+    "@polkadot/keyring": "^12.0.0",
+    "@polkadot/util": "^12.0.0",
+    "bs58": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "form-data": "^4.0.0",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.0.0",
+    "@types/node-fetch": "^2.6.11",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6"
+  }
+
+}
