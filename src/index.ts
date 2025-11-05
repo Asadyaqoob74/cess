@@ -112,6 +112,12 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 app.use(cors(corsOptions));
 app.use(express.json());
 
+app.options('*', cors(corsOptions));
+app.options('/api/ensure-territory', cors(corsOptions));
+app.options('/api/upload', cors(corsOptions));
+app.options('/api/file/:fid', cors(corsOptions));
+app.options('/api/download/:fid', cors(corsOptions));
+
 // Ensure errors also include CORS headers
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (!res.headersSent) {
