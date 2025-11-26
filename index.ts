@@ -841,6 +841,77 @@ app.get('/api/cess/json/:fid', ensureReady, async (req, res) => {
   }
 });
 
+app.get('/api/file-status/:fid', ensureReady, async (req, res) => {
+  try {
+    const fid = req.params.fid;
+    const account = cess.getSignatureAcc();
+    
+    const dealMap = await cess.queryDealMap(fid);
+    const fileMeta = await cess.queryFileByFid(fid);
+    const userFileList = await cess.queryUserHoldFileList(account);
+    
+    const fileInUserList = userFileList?.some((file: any) => {
+      const fileFid = file?.fileHash || file?.fid || '';
+      return fileFid.toLowerCase() === fid.toLowerCase();
+    });
+    
+    let status = 'Unknown';
+    let canDownload = false;
+    let message = '';
+    let estimatedWait = null;
+    
+    if (!dealMap && !fileMeta) {
+      status = 'Not Found';
+      message = 'File does not exist on blockchain';
+    } else if (dealMap && !fileMeta) {
+      status = 'Distributing';
+      message = 'File is being distributed to storage nodes';
+      canDownload = false;
+      estimatedWait = '1-10 minutes';
+    } else if (fileMeta) {
+      status = 'Stored';
+      message = 'File is stored on blockchain';
+      canDownload = true;
+    }
+    
+    // Try to check gateway availability
+    let gatewayAvailable = false;
+    try {
+      let gatewayUrl = GATEWAY_URL;
+      gatewayUrl = gatewayUrl.replace(/\/$/, '');
+      const downloadUrl = `${gatewayUrl}/download/${fid}`;
+      const headers = buildDownloadHeaders();
+      
+      const testResponse = await fetch(downloadUrl, {
+        method: 'HEAD', // Just check if it exists
+        headers: headers as any,
+      });
+      
+      gatewayAvailable = testResponse.ok;
+    } catch (e) {
+      // Gateway check failed, but that's okay
+    }
+    
+    res.json({
+      fid: fid,
+      status: status,
+      canDownload: canDownload && gatewayAvailable,
+      message: message,
+      estimatedWait: estimatedWait,
+      dealMap: dealMap ? serializeBigInt(dealMap) : null,
+      fileMeta: fileMeta ? serializeBigInt(fileMeta) : null,
+      fileInUserList: fileInUserList || false,
+      gatewayAvailable: gatewayAvailable,
+      account: account,
+      recommendation: !gatewayAvailable && fileMeta 
+        ? 'File is stored but gateway may need time to sync. Wait 1-2 minutes and try download again.'
+        : null,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || String(e) });
+  }
+});
+
 
 // (Other endpoints like /api/file-info, /api/file-status, etc. can stay as you had them)
 
