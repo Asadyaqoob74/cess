@@ -648,6 +648,75 @@ app.post('/api/upload', ensureReady, uploadMiddleware.single('file'), async (req
   }
 });
 
+app.post('/api/upload-json', ensureReady, async (req, res) => {
+  try {
+    const jsonData = req.body;
+
+    if (!jsonData) {
+      return res.status(400).json({ error: 'Missing JSON body' });
+    }
+
+    // 1) Convert JSON to string
+    const jsonString =
+      typeof jsonData === 'string'
+        ? jsonData
+        : JSON.stringify(jsonData, null, 2);
+
+    // 2) Create a temporary JSON file
+    const tmpDir = path.join('uploads', 'json');
+    await fsp.mkdir(tmpDir, { recursive: true });
+
+    const tmpPath = path.join(tmpDir, `json_${Date.now()}.json`);
+    await fsp.writeFile(tmpPath, jsonString, 'utf8');
+
+    // 3) Ensure territory & gateway authorization
+    await ensureTerritory();
+    await ensureGatewayAuth();
+
+    // 4) Get gateway config + official token
+    const gatewayConfig = await getGatewayConfig();
+
+    // 5) Upload using official CESS upload()
+    const uploadResult: any = await upload(gatewayConfig as any, tmpPath, {
+      territory: TERRITORY,
+    });
+
+    // Cleanup temp file
+    await fsp.unlink(tmpPath).catch(() => {});
+
+    if (uploadResult.code !== 200) {
+      throw new Error(
+        `CESS upload failed: ${uploadResult.error || 'Unknown error'}`
+      );
+    }
+
+    // 6) Extract FID
+    let fid = '';
+    const d = uploadResult.data;
+
+    if (typeof d === 'string') fid = d;
+    else if (d?.fid) fid = d.fid;
+    else if (d?.data?.fid) fid = d.data.fid;
+    else if (d?.data) fid = d.data;
+
+    fid = fid.toString().trim();
+
+    if (!fid) {
+      throw new Error('No FID returned from CESS upload');
+    }
+
+    res.json({
+      success: true,
+      fid,
+      message: 'JSON uploaded to CESS successfully',
+    });
+  } catch (e: any) {
+    res.status(500).json({
+      error: e.message || String(e),
+    });
+  }
+});
+
 // Download using official SDK `downloadFile`
 app.get('/api/download/:fid', ensureReady, async (req, res) => {
   try {
