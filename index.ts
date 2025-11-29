@@ -786,6 +786,77 @@ app.get('/api/download/:fid', ensureReady, async (req, res) => {
   }
 });
 
+// API: Download file - Try download regardless of status
+app.get('/api/download-new/:fid', ensureReady, async (req, res) => {
+  try {
+    const fid = req.params.fid;
+    
+    // Build download URL (like Rust SDK - no status check first!)
+    let gatewayUrl = GATEWAY_URL;
+    if (!gatewayUrl.endsWith('/')) {
+      gatewayUrl = gatewayUrl + '/';
+    }
+    
+    const downloadUrl = `${gatewayUrl}file/download/${fid}`;
+    const headers = buildDownloadHeaders();
+    
+    console.log('Attempting download:', {
+      fid: fid,
+      url: downloadUrl,
+      account: headers.Account,
+    });
+    
+    // Try to download directly (like Rust SDK does)
+    const response = await fetch(downloadUrl, {
+      method: 'GET',
+      headers: headers as any,
+    });
+    
+    // Check response
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Download failed:', {
+        status: response.status,
+        error: errorText,
+      });
+      
+      // Only check blockchain status if download fails
+      if (response.status === 404) {
+        const dealMap = await cess.queryDealMap(fid);
+        const fileMeta = await cess.queryFileByFid(fid);
+        
+        if (dealMap && !fileMeta) {
+          return res.status(202).json({
+            error: 'File is still distributing',
+            fid: fid,
+            state: 'Distributing',
+            suggestion: 'File may be available soon. Try again in a few minutes.',
+          });
+        }
+      }
+      
+      throw new Error(`Download failed (${response.status}): ${errorText}`);
+    }
+    
+    // Download successful!
+    const tmpPath = path.join('downloads', `${fid}.bin`);
+    await fsp.mkdir(path.dirname(tmpPath), { recursive: true });
+    
+    const buffer = await response.buffer();
+    await fsp.writeFile(tmpPath, buffer);
+    
+    console.log(`✅ File downloaded successfully: ${tmpPath} (${buffer.length} bytes)`);
+    
+    res.download(tmpPath, (err) => {
+      fsp.unlink(tmpPath).catch(() => {});
+      if (err) console.error('Download send error:', err);
+    });
+  } catch (e: any) {
+    console.error('[DOWNLOAD] Error:', e);
+    res.status(500).json({ error: e.message || String(e) });
+  }
+});
+
 app.get('/api/cess/json/:fid', ensureReady, async (req, res) => {
   const fid = req.params.fid;
 
